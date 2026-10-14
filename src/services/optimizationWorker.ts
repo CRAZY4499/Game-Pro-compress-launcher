@@ -138,8 +138,13 @@ export class StreamingOptimizationController {
 
           this.callbacks.onFileProcessed(file.id, compressedSizeBytes, savedBytesForFile);
 
-          // Pacing to honor profile CPU limit
-          const delayMs = this.config.profile === 'quiet' ? 300 : this.config.profile === 'balanced' ? 120 : 30;
+          // Pacing to honor profile CPU limit and prevent PC overheating
+          let delayMs = this.config.profile === 'quiet' ? 300 : this.config.profile === 'balanced' ? 120 : 35;
+          
+          // Thermal Safeguard: periodic breathing pause every 25 files to yield event loop & cool CPU
+          if (processedCount % 25 === 0) {
+            delayMs += 100;
+          }
           await new Promise(r => setTimeout(r, delayMs));
         }));
       }

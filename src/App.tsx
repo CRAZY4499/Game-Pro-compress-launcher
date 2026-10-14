@@ -28,7 +28,7 @@ import {
   PerformanceConfig, 
   SystemTelemetry 
 } from './types';
-import { createSampleGameLibrary, scanRealDirectoryHandle } from './services/gamePresets';
+import { createSampleGameLibrary, scanRealDirectoryHandle, scanRealFileList } from './services/gamePresets';
 import { repairDiagnosticIssue, rollbackDiagnosticIssue } from './services/selfHealingEngine';
 import { StreamingOptimizationController } from './services/optimizationWorker';
 import { Header } from './components/Header';
@@ -40,6 +40,7 @@ import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { RollbackHistory } from './components/RollbackHistory';
 import { SettingsView } from './components/SettingsView';
 import { HexViewerModal } from './components/HexViewerModal';
+import { DesktopLaunchModal } from './components/DesktopLaunchModal';
 
 export default function App() {
   // Core State
@@ -47,6 +48,8 @@ export default function App() {
   const [selectedGameId, setSelectedGameId] = useState<string>('cp2077');
   const [activeTab, setActiveTab] = useState<'library' | 'diagnostics' | 'benchmarks' | 'snapshots' | 'settings'>('library');
   const [snapshots, setSnapshots] = useState<RollbackSnapshot[]>([]);
+  const [isDesktopModalOpen, setIsDesktopModalOpen] = useState(false);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   // Performance Configuration
   const [config, setConfig] = useState<PerformanceConfig>({
@@ -285,7 +288,7 @@ export default function App() {
     }
   };
 
-  // Import Real Local PC Folder via File System Access API
+  // Import Real Local PC Folder via File System Access API or HTML5 input fallback
   const handleImportRealFolder = async () => {
     try {
       if ('showDirectoryPicker' in window) {
@@ -298,14 +301,31 @@ export default function App() {
         setSelectedGameId(customGame.id);
         setActiveTab('library');
       } else {
-        alert('File System Access API is not supported in this browser. You can still test with the comprehensive built-in PC game installations.');
+        folderInputRef.current?.click();
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.error('Directory read failed', err);
+        // Fallback to standard input
+        folderInputRef.current?.click();
       }
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsImporting(true);
+      try {
+        const customGame = await scanRealFileList(e.target.files);
+        setGames(prev => [customGame, ...prev]);
+        setSelectedGameId(customGame.id);
+        setActiveTab('library');
+      } catch (err) {
+        console.error('File scan error', err);
+      } finally {
+        setIsImporting(false);
+      }
     }
   };
 
@@ -318,6 +338,7 @@ export default function App() {
         pendingIssueCount={totalPendingIssues}
         onImportFolder={handleImportRealFolder}
         isImporting={isImporting}
+        onOpenDesktopGuide={() => setIsDesktopModalOpen(true)}
       />
 
       {/* Real-time Hardware Telemetry & Profile Bar */}
@@ -481,6 +502,25 @@ export default function App() {
           setInspectedIssue(null);
         }}
         onRepairSingle={handleRepairSingle}
+      />
+
+      {/* Desktop PC & EXE Launcher Guide Modal */}
+      <DesktopLaunchModal
+        isOpen={isDesktopModalOpen}
+        onClose={() => setIsDesktopModalOpen(false)}
+      />
+
+      {/* Hidden Folder Picker Input Fallback */}
+      <input
+        type="file"
+        ref={folderInputRef}
+        onChange={handleFileInputChange}
+        // @ts-ignore
+        webkitdirectory=""
+        // @ts-ignore
+        directory=""
+        multiple
+        className="hidden"
       />
     </div>
   );

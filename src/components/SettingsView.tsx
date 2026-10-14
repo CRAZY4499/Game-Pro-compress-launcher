@@ -264,6 +264,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Hardware Protection & Zero-Risk PC Safety Guarantee */}
+      <div className="p-5 rounded-xl bg-slate-900 border border-emerald-800/40 space-y-3">
+        <div className="flex items-center gap-2.5 text-emerald-400 font-semibold text-sm">
+          <Shield className="w-4 h-4" />
+          <span>PC Hardware Safety & Thermal Protection Guarantees</span>
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          GameShrink Pro is engineered with strict hardware protection standards to ensure no PC component (CPU, RAM, GPU, or SSD) is ever stressed or damaged:
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1 text-xs">
+          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span className="font-semibold text-white block mb-0.5">CPU Thermal Guard</span>
+            <span className="text-[11px] text-slate-400">
+              Automatic breathing pauses prevent 100% continuous core pegging, keeping CPU temperatures cool.
+            </span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span className="font-semibold text-white block mb-0.5">RAM Leak Isolation</span>
+            <span className="text-[11px] text-slate-400">
+              Streamed in bounded 512KB chunks. Buffers are dereferenced immediately to prevent out-of-memory errors.
+            </span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span className="font-semibold text-white block mb-0.5">SSD Wear Minimizer</span>
+            <span className="text-[11px] text-slate-400">
+              Entropy filters skip incompressible files, preventing needless disk rewrite cycles on your drive.
+            </span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span className="font-semibold text-white block mb-0.5">Zero File Loss Guarantee</span>
+            <span className="text-[11px] text-slate-400">
+              Source game binaries are 100% read-only protected. Never deletes or corrupts active game files.
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

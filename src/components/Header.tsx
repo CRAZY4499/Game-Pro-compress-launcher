@@ -7,6 +7,7 @@ interface HeaderProps {
   pendingIssueCount: number;
   onImportFolder: () => void;
   isImporting: boolean;
+  onOpenDesktopGuide: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,7 +15,8 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   pendingIssueCount,
   onImportFolder,
-  isImporting
+  isImporting,
+  onOpenDesktopGuide
 }) => {
   return (
     <header className="flex items-center justify-between gap-8 px-6 py-4 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
@@ -87,6 +89,13 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Zone 3: 1 primary action */}
       <div className="flex items-center gap-3 shrink-0">
+        <button
+          onClick={onOpenDesktopGuide}
+          className="px-3 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 border border-slate-700/80 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>PC / .EXE Launcher</span>
+        </button>
+
         <button
           onClick={onImportFolder}
           disabled={isImporting}

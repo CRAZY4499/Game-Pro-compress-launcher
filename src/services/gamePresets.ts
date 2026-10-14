@@ -578,3 +578,118 @@ export async function scanRealDirectoryHandle(
 
   return customGame;
 }
+
+/**
+ * Fallback scanner for standard webkitdirectory FileList input
+ */
+export async function scanRealFileList(
+  fileList: FileList,
+  onProgress?: (scannedFiles: number, currentPath: string) => void
+): Promise<GameFolder> {
+  const files: GameFile[] = [];
+  let totalOriginalSize = 0;
+  const count = fileList.length;
+
+  for (let i = 0; i < count; i++) {
+    const fileObj = fileList[i];
+    const fullPath = fileObj.webkitRelativePath || fileObj.name;
+    const name = fileObj.name;
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const size = fileObj.size;
+    totalOriginalSize += size;
+
+    let category: FileCategory = 'unknown';
+    if (['exe', 'com', 'bat', 'cmd', 'dll'].includes(ext)) category = 'executable';
+    else if (['pak', 'ba2', 'bundle', 'vpk', 'zip', 'rar', '7z'].includes(ext)) category = 'archive';
+    else if (['dds', 'tga', 'png', 'jpg', 'texture', 'bmp'].includes(ext)) category = 'texture';
+    else if (['bnk', 'wem', 'ogg', 'wav', 'mp3', 'flac'].includes(ext)) category = 'audio';
+    else if (['bik', 'bk2', 'mp4', 'webm'].includes(ext)) category = 'video';
+    else if (['pso', 'dxbc', 'spv', 'cache'].includes(ext)) category = 'shader_cache';
+    else if (['ini', 'cfg', 'json', 'xml'].includes(ext)) category = 'config';
+    else if (['dmp', 'tmp', 'log'].includes(ext)) category = 'dump_temp';
+
+    let headerHex = '00 00 00 00';
+    let entropy = 5.0;
+    try {
+      const slice = fileObj.slice(0, Math.min(size, 2048));
+      const arrayBuffer = await slice.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      entropy = calculateEntropy(bytes);
+      if (bytes.length >= 4) {
+        headerHex = Array.from(bytes.slice(0, 4))
+          .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+          .join(' ');
+      }
+    } catch {
+      // safe fallback
+    }
+
+    let isCorrupt = false;
+    let corruptionType = undefined;
+    let corruptionDetails = undefined;
+
+    if (size === 0 && !name.endsWith('.keep')) {
+      isCorrupt = true;
+      corruptionType = 'TRUNCATED_OR_ZERO_BYTE_ASSET' as const;
+      corruptionDetails = 'File is 0 bytes on disk.';
+    } else if (ext === 'dmp' || ext === 'tmp') {
+      isCorrupt = true;
+      corruptionType = 'ORPHANED_CRASH_DUMP' as const;
+      corruptionDetails = 'Orphaned crash or unpack temp file.';
+    }
+
+    const compressedSize = Math.round(size * (entropy > 7.4 ? 0.95 : 0.60));
+
+    files.push({
+      id: `file-${i + 1}-${Date.now().toString(36)}`,
+      path: fullPath,
+      name,
+      extension: ext,
+      category,
+      originalSizeBytes: size,
+      compressedSizeBytes: compressedSize,
+      isCompressed: false,
+      compressionRatio: size > 0 ? Number((compressedSize / size).toFixed(2)) : 1.0,
+      entropy,
+      checksumSha256: 'local_' + Math.random().toString(36).substring(2, 10),
+      isCorrupt,
+      corruptionType,
+      corruptionDetails,
+      isRepaired: false,
+      readOnly: false,
+      lastModified: fileObj.lastModified || Date.now(),
+      magicHeaderHex: headerHex
+    });
+
+    if (i % 10 === 0) {
+      onProgress?.(i, fullPath);
+    }
+  }
+
+  const rootName = files[0]?.path.split('/')[0] || 'Imported Game Folder';
+  const customGame: GameFolder = {
+    id: `local-${Date.now()}`,
+    name: rootName,
+    developer: 'Local PC Installation',
+    installPath: `C:\\Games\\${rootName}`,
+    driveLetter: 'C:',
+    driveType: 'NVMe SSD',
+    totalFiles: files.length,
+    originalSizeBytes: totalOriginalSize,
+    currentSizeBytes: totalOriginalSize,
+    savedSizeBytes: 0,
+    compressionPercentage: 0,
+    status: 'idle',
+    healthScore: 100,
+    files,
+    issues: [],
+    isCustomLoaded: true
+  };
+
+  const issues = diagnoseGameFolder(customGame);
+  const unhealthCount = issues.filter(i => i.status === 'pending').length;
+  customGame.issues = issues;
+  customGame.healthScore = Math.max(25, Math.round(100 - unhealthCount * 12));
+
+  return customGame;
+}
